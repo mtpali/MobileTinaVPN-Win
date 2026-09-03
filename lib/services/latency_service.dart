@@ -54,7 +54,7 @@ class LatencyService {
 
       client = HttpClient()
         ..connectionTimeout = timeout
-        ..findProxy = (_) => 'PROXY 127.0.0.1:${ports.last}'
+        ..findProxy = ((Uri _) => 'PROXY 127.0.0.1:${ports.last}')
         ..userAgent = 'MobileTinaVPN-Windows-Latency/0.2';
       for (final String probeUrl in probeUrls) {
         final int? latency = await _probe(client, probeUrl, timeout);
