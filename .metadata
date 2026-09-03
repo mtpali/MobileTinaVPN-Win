@@ -1,0 +1,18 @@
+version:
+  revision: "stable"
+  channel: "stable"
+
+project_type: app
+
+migration:
+  platforms:
+    - platform: root
+      create_revision: stable
+      base_revision: stable
+    - platform: windows
+      create_revision: stable
+      base_revision: stable
+
+unmanaged_files:
+  - lib/main.dart
+  - windows/runner/main.cpp

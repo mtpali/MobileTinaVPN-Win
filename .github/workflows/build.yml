@@ -1,0 +1,125 @@
+name: Build portable Windows client
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  XRAY_VERSION: v26.3.27
+  XRAY_SHA256: d004c39288ce9ada487c6f398c7c545f7d749e44bdfdd59dbc9f865afba4e1ad
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none lib test
+      - run: flutter analyze
+      - run: flutter test
+
+  build-windows:
+    needs: analyze-and-test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Build Flutter Windows release
+        shell: pwsh
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+          $symbolsDir = Join-Path $env:RUNNER_TEMP 'mobiletina-private-symbols'
+          flutter build windows --release --obfuscate --split-debug-info="$symbolsDir" --tree-shake-icons
+      - name: Add verified Xray core
+        shell: pwsh
+        run: |
+          $xrayArchive = Join-Path $env:RUNNER_TEMP 'xray.zip'
+          $xrayUrl = "https://github.com/XTLS/Xray-core/releases/download/$env:XRAY_VERSION/Xray-windows-64.zip"
+          Invoke-WebRequest -Uri $xrayUrl -OutFile $xrayArchive
+          $actualHash = (Get-FileHash -Path $xrayArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $env:XRAY_SHA256) {
+            throw "Xray checksum mismatch: $actualHash"
+          }
+          $releaseDir = Join-Path $env:GITHUB_WORKSPACE 'build\windows\x64\runner\Release'
+          $coreDir = Join-Path $releaseDir 'core'
+          New-Item -ItemType Directory -Force -Path $coreDir | Out-Null
+          Expand-Archive -Path $xrayArchive -DestinationPath $coreDir -Force
+          Copy-Item README.md, LICENSE, THIRD_PARTY_NOTICES.md -Destination $releaseDir
+          Copy-Item assets/fonts/OFL.txt -Destination (Join-Path $releaseDir 'VAZIRMATN_OFL.txt')
+          $portableData = Join-Path $releaseDir 'portable-data'
+          New-Item -ItemType Directory -Force -Path $portableData | Out-Null
+          Set-Content -Path (Join-Path $portableData 'README.txt') -Value 'MobileTinaVPN stores portable user data in this directory.'
+      - name: Verify release hardening
+        shell: pwsh
+        run: |
+          $releaseDir = Join-Path $env:GITHUB_WORKSPACE 'build\windows\x64\runner\Release'
+          $flutterAssets = Join-Path $releaseDir 'data\flutter_assets'
+          $protected = @(Get-ChildItem -Path $flutterAssets -Recurse -File -Filter '*.mtv')
+          if ($protected.Count -ne 10) {
+            throw "Expected 10 protected asset payloads, found $($protected.Count)."
+          }
+          $rawExtensions = @('.webp', '.png', '.jpg', '.jpeg', '.ttf')
+          $rawAssets = @(Get-ChildItem -Path $flutterAssets -Recurse -File | Where-Object {
+            $rawExtensions -contains $_.Extension.ToLowerInvariant()
+          })
+          if ($rawAssets.Count -ne 0) {
+            throw "Unprotected visual/font assets found: $($rawAssets.FullName -join ', ')"
+          }
+          $debugFiles = @(Get-ChildItem -Path $releaseDir -Recurse -File | Where-Object {
+            $_.Extension -in @('.pdb', '.symbols', '.map')
+          })
+          if ($debugFiles.Count -ne 0) {
+            throw "Debug symbols leaked into portable output: $($debugFiles.FullName -join ', ')"
+          }
+      - name: Smoke test Windows executable
+        shell: pwsh
+        run: |
+          $releaseDir = Join-Path $env:GITHUB_WORKSPACE 'build\windows\x64\runner\Release'
+          $executable = Join-Path $releaseDir 'MobileTinaVPN.exe'
+          $process = Start-Process -FilePath $executable -WorkingDirectory $releaseDir -PassThru
+          Start-Sleep -Seconds 5
+          if ($process.HasExited) {
+            throw "MobileTinaVPN exited during smoke test with code $($process.ExitCode)"
+          }
+          Stop-Process -Id $process.Id -Force
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $releaseDir = Join-Path $env:GITHUB_WORKSPACE 'build\windows\x64\runner\Release'
+          $archive = Join-Path $env:GITHUB_WORKSPACE 'MobileTinaVPN-Windows-x64.zip'
+          Compress-Archive -Path "$releaseDir\*" -DestinationPath $archive -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v7
+        with:
+          name: MobileTinaVPN-Windows-x64
+          path: MobileTinaVPN-Windows-x64.zip
+          if-no-files-found: error
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: MobileTinaVPN-Windows-x64
+      - name: Publish tagged release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$env:GITHUB_REF_NAME" MobileTinaVPN-Windows-x64.zip --generate-notes --title "MobileTinaVPN $env:GITHUB_REF_NAME"
