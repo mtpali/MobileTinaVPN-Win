@@ -127,7 +127,7 @@ class SettingsScreen extends StatelessWidget {
               leading: Icon(Icons.info_outline_rounded),
               title: Text('MobileTinaVPN for Windows'),
               subtitle: Text(
-                'نسخه 0.4.0 • نسخهٔ پرتابل ویندوز\n'
+                'نسخه 0.5.0 • نسخهٔ پرتابل ویندوز\n'
                 'داده‌ها به‌صورت پرتابل در پوشهٔ portable-data نگهداری می‌شوند.',
               ),
             ),
