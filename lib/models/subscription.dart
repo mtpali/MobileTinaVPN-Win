@@ -15,6 +15,15 @@ class SubscriptionUsage {
 
   int get used => upload + download;
 
+  bool get hasExpiry => expiryUnix > 0;
+
+  bool get isExpired => isExpiredAt(DateTime.now());
+
+  bool isExpiredAt(DateTime now) {
+    if (!hasExpiry) return false;
+    return expiryUnix <= now.millisecondsSinceEpoch ~/ 1000;
+  }
+
   double get fraction {
     if (total <= 0) return 0;
     return (used / total).clamp(0.0, 1.0).toDouble();
@@ -61,6 +70,14 @@ class Subscription {
   final List<ServerProfile> servers;
   final DateTime updatedAt;
   final SubscriptionUsage usage;
+
+  bool get isRemote => url.isNotEmpty;
+
+  bool get isExpired => usage.isExpired;
+
+  bool containsServer(String serverId) {
+    return servers.any((ServerProfile server) => server.id == serverId);
+  }
 
   Subscription copyWith({
     String? name,

@@ -14,6 +14,8 @@ class SubscriptionParseResult {
 }
 
 class SubscriptionParser {
+  const SubscriptionParser();
+
   static final RegExp _schemePattern = RegExp(
     r'(?:^|\s)(vmess|vless|trojan|ss|socks)://',
     caseSensitive: false,

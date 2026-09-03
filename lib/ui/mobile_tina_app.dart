@@ -55,7 +55,6 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final bool compact = MediaQuery.sizeOf(context).width < 780;
     final Widget content = switch (page) {
       AppPage.home => HomeScreen(
           controller: widget.controller,
@@ -66,56 +65,39 @@ class _AppShellState extends State<AppShell> {
     };
 
     return Scaffold(
-      body: SafeArea(
-        child: compact
-            ? content
-            : Directionality(
-                textDirection: TextDirection.ltr,
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Directionality(
-                        textDirection: TextDirection.rtl,
-                        child: content,
-                      ),
-                    ),
-                    Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: _SideBar(
-                        page: page,
-                        state: widget.controller.connectionState,
-                        onSelected: (AppPage value) =>
-                            setState(() => page = value),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      appBar: AppBar(
+        title: Text(
+          switch (page) {
+            AppPage.home => 'فیلترشکن',
+            AppPage.servers => 'سرورها و اشتراک‌ها',
+            AppPage.settings => 'تنظیمات',
+          },
+        ),
+        actions: <Widget>[
+          if (page == AppPage.home)
+            IconButton(
+              tooltip: 'بررسی سرعت سرورها',
+              onPressed: widget.controller.isBusy
+                  ? null
+                  : widget.controller.testServers,
+              icon: const Icon(Icons.speed_rounded),
+            ),
+          const SizedBox(width: 8),
+        ],
       ),
-      bottomNavigationBar: compact
-          ? NavigationBar(
-              selectedIndex: page.index,
-              onDestinationSelected: (int value) =>
-                  setState(() => page = AppPage.values[value]),
-              destinations: const <NavigationDestination>[
-                NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: 'خانه',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.dns_outlined),
-                  selectedIcon: Icon(Icons.dns_rounded),
-                  label: 'سرورها',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings_rounded),
-                  label: 'تنظیمات',
-                ),
-              ],
-            )
-          : null,
+      drawer: Drawer(
+        child: SafeArea(
+          child: _SideBar(
+            page: page,
+            state: widget.controller.connectionState,
+            onSelected: (AppPage value) {
+              Navigator.of(context).pop();
+              setState(() => page = value);
+            },
+          ),
+        ),
+      ),
+      body: SafeArea(top: false, child: content),
     );
   }
 }
@@ -135,7 +117,7 @@ class _SideBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     return Container(
-      width: 226,
+      width: double.infinity,
       decoration: BoxDecoration(
         color: colors.surface,
         border: Border(left: BorderSide(color: Theme.of(context).dividerColor)),

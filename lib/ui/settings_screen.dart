@@ -15,15 +15,8 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppSettings settings = controller.settings;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
+      padding: const EdgeInsets.fromLTRB(28, 18, 28, 28),
       children: <Widget>[
-        const Text(
-          'تنظیمات',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 3),
-        const Text('رفتار اتصال و ظاهر برنامه را تنظیم کنید.'),
-        const SizedBox(height: 22),
         _Section(
           title: 'اتصال',
           children: <Widget>[
@@ -129,7 +122,7 @@ class SettingsScreen extends StatelessWidget {
               leading: Icon(Icons.info_outline_rounded),
               title: Text('MobileTinaVPN for Windows'),
               subtitle: Text(
-                'نسخه 0.1.0 • Flutter Desktop • Xray Core\n'
+                'نسخه 0.2.0 • Flutter Desktop • Xray Core\n'
                 'داده‌ها به‌صورت پرتابل در پوشهٔ portable-data نگهداری می‌شوند.',
               ),
             ),

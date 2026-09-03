@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_controller.dart';
 import '../models/server_profile.dart';
@@ -31,25 +32,29 @@ class _ServersScreenState extends State<ServersScreen> {
     return Column(
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(28, 24, 28, 18),
+          padding: const EdgeInsets.fromLTRB(28, 18, 28, 14),
           child: Row(
             children: <Widget>[
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'سرورها و اشتراک‌ها',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-                    ),
-                    SizedBox(height: 3),
-                    Text('اشتراک‌ها را مدیریت و سرور دلخواه را انتخاب کنید.'),
-                  ],
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _showAddDialog,
+                  icon: const Icon(Icons.add_link_rounded),
+                  label: const Text('افزودن اشتراک'),
                 ),
               ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'افزودن سرور از کلیپ‌بورد',
+                onPressed: updating ? null : _importFromClipboard,
+                icon: const Icon(Icons.content_paste_go_rounded),
+              ),
+              const SizedBox(width: 8),
               IconButton.filledTonal(
                 tooltip: 'بروزرسانی همه',
-                onPressed: updating || widget.controller.subscriptions.isEmpty
+                onPressed: updating ||
+                        !widget.controller.subscriptions.any(
+                          (Subscription item) => item.isRemote,
+                        )
                     ? null
                     : _updateAll,
                 icon: updating
@@ -58,12 +63,6 @@ class _ServersScreenState extends State<ServersScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.refresh_rounded),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: _showAddDialog,
-                icon: const Icon(Icons.add_link_rounded),
-                label: const Text('افزودن اشتراک'),
               ),
             ],
           ),
@@ -117,10 +116,12 @@ class _ServersScreenState extends State<ServersScreen> {
                         padding: const EdgeInsets.only(bottom: 9),
                         child: _ServerCard(
                           server: server,
+                          expired: widget.controller.isServerExpired(server.id),
                           selected:
                               widget.controller.selectedServerId == server.id,
                           enabled: widget.controller.connectionState !=
-                              VpnConnectionState.connected,
+                                  VpnConnectionState.connected &&
+                              !widget.controller.isServerExpired(server.id),
                           onTap: () => unawaited(
                             widget.controller.selectServer(server.id),
                           ),
@@ -240,6 +241,23 @@ class _ServersScreenState extends State<ServersScreen> {
     }
   }
 
+  Future<void> _importFromClipboard() async {
+    setState(() => updating = true);
+    try {
+      final ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
+      final int imported = await widget.controller.importServersFromClipboard(
+        data?.text ?? '',
+      );
+      if (mounted) {
+        _message('$imported سرور از کلیپ‌بورد اضافه شد.');
+      }
+    } on Object catch (error) {
+      if (mounted) _message('$error', error: true);
+    } finally {
+      if (mounted) setState(() => updating = false);
+    }
+  }
+
   Future<void> _updateOne(String id) async {
     setState(() => updating = true);
     try {
@@ -352,8 +370,12 @@ class _SubscriptionHeader extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 Text(
-                  '${subscription.servers.length} سرور • بروزرسانی '
-                  '${_date(subscription.updatedAt)}',
+                  subscription.isExpired
+                      ? '${subscription.servers.length} سرور • اشتراک منقضی شده'
+                      : subscription.isRemote
+                          ? '${subscription.servers.length} سرور • بروزرسانی '
+                              '${_date(subscription.updatedAt)}'
+                          : '${subscription.servers.length} سرور محلی',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -361,7 +383,7 @@ class _SubscriptionHeader extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'بروزرسانی',
-            onPressed: onUpdate,
+            onPressed: subscription.isRemote ? onUpdate : null,
             icon: const Icon(Icons.refresh_rounded),
           ),
           IconButton(
@@ -378,12 +400,14 @@ class _SubscriptionHeader extends StatelessWidget {
 class _ServerCard extends StatelessWidget {
   const _ServerCard({
     required this.server,
+    required this.expired,
     required this.selected,
     required this.enabled,
     required this.onTap,
   });
 
   final ServerProfile server;
+  final bool expired;
   final bool selected;
   final bool enabled;
   final VoidCallback onTap;
@@ -438,13 +462,24 @@ class _ServerCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  color: expired
+                      ? (Theme.of(context).brightness == Brightness.light
+                          ? const Color(0xfffdeDEE)
+                          : const Color(0xff3a2024))
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  server.latencyMs == null ? '—' : '${server.latencyMs}ms',
+                  expired
+                      ? 'منقضی'
+                      : server.latencyMs == null
+                          ? '—'
+                          : '${server.latencyMs}ms',
                   textDirection: TextDirection.ltr,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: expired ? Theme.of(context).colorScheme.error : null,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],

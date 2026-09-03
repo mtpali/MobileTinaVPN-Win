@@ -7,6 +7,7 @@ import 'models/server_profile.dart';
 import 'models/subscription.dart';
 import 'services/latency_service.dart';
 import 'services/portable_store.dart';
+import 'services/subscription_parser.dart';
 import 'services/subscription_service.dart';
 import 'services/windows_platform_service.dart';
 import 'services/xray_core_service.dart';
@@ -18,10 +19,12 @@ class AppController extends ChangeNotifier {
     PortableStore? store,
     WindowsPlatformService? platform,
     SubscriptionService? subscriptionService,
+    SubscriptionParser subscriptionParser = const SubscriptionParser(),
     LatencyService latencyService = const LatencyService(),
   })  : store = store ?? PortableStore(),
         platform = platform ?? WindowsPlatformService(),
         _subscriptionService = subscriptionService ?? SubscriptionService(),
+        _subscriptionParser = subscriptionParser,
         _latencyService = latencyService {
     core = XrayCoreService(store: this.store, platform: this.platform);
     core.onUnexpectedExit = _handleUnexpectedCoreExit;
@@ -30,6 +33,7 @@ class AppController extends ChangeNotifier {
   final PortableStore store;
   final WindowsPlatformService platform;
   final SubscriptionService _subscriptionService;
+  final SubscriptionParser _subscriptionParser;
   final LatencyService _latencyService;
   late final XrayCoreService core;
 
@@ -65,6 +69,17 @@ class AppController extends ChangeNotifier {
     return subscriptions.firstOrNull;
   }
 
+  Subscription? subscriptionForServer(String serverId) {
+    for (final Subscription subscription in subscriptions) {
+      if (subscription.containsServer(serverId)) return subscription;
+    }
+    return null;
+  }
+
+  bool isServerExpired(String serverId) {
+    return subscriptionForServer(serverId)?.isExpired ?? false;
+  }
+
   bool get isBusy => connectionState == VpnConnectionState.testing ||
       connectionState == VpnConnectionState.connecting;
 
@@ -75,6 +90,14 @@ class AppController extends ChangeNotifier {
     final StoredState loaded = await store.load();
     settings = loaded.settings;
     subscriptions = loaded.subscriptions;
+    subscriptions = subscriptions.map((Subscription subscription) {
+      if (!subscription.isExpired) return subscription;
+      return subscription.copyWith(
+        servers: subscription.servers
+            .map((ServerProfile server) => server.copyWith(clearLatency: true))
+            .toList(),
+      );
+    }).toList();
     selectedServerId = loaded.selectedServerId;
     if (selectedServer == null) selectedServerId = servers.firstOrNull?.id;
     initialized = true;
@@ -106,12 +129,69 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<int> importServersFromClipboard(String contents) async {
+    final String payload = contents.trim();
+    if (payload.isEmpty) {
+      throw const SubscriptionException('کلیپ‌بورد خالی است.');
+    }
+
+    final Uri? uri = Uri.tryParse(payload);
+    if (uri != null &&
+        (uri.scheme == 'https' || uri.scheme == 'http') &&
+        !payload.contains(RegExp(r'[\r\n]'))) {
+      await addSubscription(name: 'اشتراک کلیپ‌بورد', url: payload);
+      return subscriptions
+          .firstWhere((Subscription item) => item.url == uri.toString())
+          .servers
+          .length;
+    }
+
+    final SubscriptionParseResult parsed = _subscriptionParser.parse(payload);
+    if (parsed.servers.isEmpty) {
+      throw const SubscriptionException(
+        'هیچ لینک سرور پشتیبانی‌شده‌ای در کلیپ‌بورد پیدا نشد.',
+      );
+    }
+
+    const String localId = 'local-clipboard';
+    final int index = subscriptions.indexWhere(
+      (Subscription item) => item.id == localId,
+    );
+    final List<ServerProfile> previous =
+        index < 0 ? <ServerProfile>[] : subscriptions[index].servers;
+    final Map<String, ServerProfile> merged = <String, ServerProfile>{
+      for (final ServerProfile server in previous) server.id: server,
+      for (final ServerProfile server in parsed.servers) server.id: server,
+    };
+    final Subscription local = Subscription(
+      id: localId,
+      name: 'سرورهای کلیپ‌بورد',
+      url: '',
+      servers: merged.values.toList(growable: false),
+      updatedAt: DateTime.now(),
+    );
+    if (index < 0) {
+      subscriptions = <Subscription>[...subscriptions, local];
+    } else {
+      subscriptions = <Subscription>[
+        ...subscriptions.take(index),
+        local,
+        ...subscriptions.skip(index + 1),
+      ];
+    }
+    selectedServerId ??= parsed.servers.first.id;
+    await _persist();
+    notifyListeners();
+    return parsed.servers.length;
+  }
+
   Future<void> updateSubscription(String id) async {
     final int index = subscriptions.indexWhere(
       (Subscription item) => item.id == id,
     );
     if (index < 0) return;
     final Subscription current = subscriptions[index];
+    if (!current.isRemote) return;
     final Subscription fresh = await _subscriptionService.fetch(
       name: current.name,
       url: current.url,
@@ -130,6 +210,7 @@ class AppController extends ChangeNotifier {
     for (final Subscription subscription in List<Subscription>.from(
       subscriptions,
     )) {
+      if (!subscription.isRemote) continue;
       await updateSubscription(subscription.id);
     }
   }
@@ -158,10 +239,18 @@ class AppController extends ChangeNotifier {
     connectionState = VpnConnectionState.testing;
     errorMessage = null;
     notifyListeners();
-    final Map<String, int?> results = await _latencyService.testAll(servers);
+    final List<ServerProfile> eligibleServers = subscriptions
+        .where((Subscription subscription) => !subscription.isExpired)
+        .expand((Subscription subscription) => subscription.servers)
+        .toList(growable: false);
+    final Map<String, int?> results =
+        await _latencyService.testAll(eligibleServers);
     subscriptions = subscriptions.map((Subscription subscription) {
       return subscription.copyWith(
         servers: subscription.servers.map((ServerProfile server) {
+          if (subscription.isExpired) {
+            return server.copyWith(clearLatency: true);
+          }
           return server.copyWith(
             latencyMs: results[server.id],
             clearLatency: results[server.id] == null,
@@ -186,7 +275,10 @@ class AppController extends ChangeNotifier {
     }
     await testServers();
     final List<ServerProfile> usable = servers
-        .where((ServerProfile item) => item.latencyMs != null)
+        .where(
+          (ServerProfile item) =>
+              item.latencyMs != null && !isServerExpired(item.id),
+        )
         .toList()
       ..sort(
         (ServerProfile a, ServerProfile b) =>
@@ -221,6 +313,13 @@ class AppController extends ChangeNotifier {
         connectionState = VpnConnectionState.failed;
         notifyListeners();
       }
+      return;
+    }
+    final Subscription? subscription = subscriptionForServer(server.id);
+    if (subscription?.isExpired ?? false) {
+      errorMessage = 'اشتراک «${subscription!.name}» منقضی شده است.';
+      connectionState = VpnConnectionState.failed;
+      notifyListeners();
       return;
     }
     connectionState = VpnConnectionState.connecting;

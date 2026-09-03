@@ -22,3 +22,10 @@ MobileTinaVPN for Windows includes or is distributed with the following componen
 - The Android project and this repository are distributed under GPL-3.0.
 
 The original license files shipped inside the Xray archive remain in the portable package.
+
+## Vazirmatn UI
+
+- Project: <https://github.com/rastikerdar/vazirmatn>
+- License: SIL Open Font License 1.1
+- Used as the bundled Persian UI font. The license text is stored at
+  `assets/fonts/OFL.txt`.

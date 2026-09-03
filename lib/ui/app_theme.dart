@@ -40,7 +40,27 @@ class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       visualDensity: VisualDensity.standard,
+      fontFamily: 'MobileTina',
       fontFamilyFallback: const <String>['Segoe UI', 'Tahoma'],
+      appBarTheme: AppBarTheme(
+        centerTitle: false,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: brightness == Brightness.light
+            ? const Color(0xfff7f8fb)
+            : const Color(0xff0f1013),
+        foregroundColor: brightness == Brightness.light
+            ? const Color(0xff1c1b1f)
+            : const Color(0xfff4eff4),
+        titleTextStyle: TextStyle(
+          fontFamily: 'MobileTina',
+          fontSize: 19,
+          fontWeight: FontWeight.w700,
+          color: brightness == Brightness.light
+              ? const Color(0xff1c1b1f)
+              : const Color(0xfff4eff4),
+        ),
+      ),
       splashFactory: InkSparkle.splashFactory,
       cardTheme: const CardThemeData(
         elevation: 0,

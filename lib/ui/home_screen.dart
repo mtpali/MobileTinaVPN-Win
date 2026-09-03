@@ -42,9 +42,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
-        _Header(controller: widget.controller),
         Padding(
-          padding: const EdgeInsets.fromLTRB(22, 6, 22, 0),
+          padding: const EdgeInsets.fromLTRB(16, 7, 16, 0),
           child: _ModeSwitch(
             automatic: automatic,
             onChanged: (bool value) => setState(() => automatic = value),
@@ -66,57 +65,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.controller});
-
-  final AppController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 24, 28, 10),
-      child: Row(
-        children: <Widget>[
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'اتصال امن و ساده',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-                ),
-                SizedBox(height: 3),
-                Text('بهترین سرور را پیدا کن و با یک کلیک متصل شو.'),
-              ],
-            ),
-          ),
-          if (controller.connectionState == VpnConnectionState.connected)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xffe7f7ee),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: const Row(
-                children: <Widget>[
-                  Icon(Icons.circle, size: 9, color: Color(0xff16a05d)),
-                  SizedBox(width: 7),
-                  Text(
-                    'محافظت فعال',
-                    style: TextStyle(
-                      color: Color(0xff11683f),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ModeSwitch extends StatelessWidget {
   const _ModeSwitch({required this.automatic, required this.onChanged});
 
@@ -127,11 +75,11 @@ class _ModeSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      height: 58,
-      padding: const EdgeInsets.all(5),
+      height: 56,
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: dark ? const Color(0xff17181c) : const Color(0xfff1f2f6),
-        borderRadius: BorderRadius.circular(23),
+        borderRadius: BorderRadius.circular(21),
       ),
       child: Row(
         children: <Widget>[
@@ -208,10 +156,10 @@ class _AutomaticPanel extends StatelessWidget {
     final ServerProfile? server = controller.selectedServer;
     final Subscription? subscription = controller.selectedSubscription;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 26),
+      padding: const EdgeInsets.fromLTRB(18, 70, 18, 24),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
+          constraints: const BoxConstraints(maxWidth: 520),
           child: Column(
             children: <Widget>[
               Semantics(
@@ -227,13 +175,13 @@ class _AutomaticPanel extends StatelessWidget {
                     child: Image.asset(
                       _imageForState(controller.connectionState),
                       key: ValueKey<VpnConnectionState>(controller.connectionState),
-                      width: 250,
-                      height: 250,
+                      width: 236,
+                      height: 236,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 18),
               Text(
                 _statusText(controller.connectionState),
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
@@ -249,7 +197,7 @@ class _AutomaticPanel extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 17),
+              const SizedBox(height: 15),
               if (server == null)
                 OutlinedButton.icon(
                   onPressed: onOpenServers,
@@ -257,12 +205,13 @@ class _AutomaticPanel extends StatelessWidget {
                   label: const Text('افزودن اشتراک'),
                 )
               else
-                _SelectedServerCard(
+                _SelectedServerLink(
                   server: server,
+                  expired: controller.isServerExpired(server.id),
                   onTap: onOpenServers,
                 ),
               if (subscription != null) ...<Widget>[
-                const SizedBox(height: 16),
+                const SizedBox(height: 26),
                 _SubscriptionCard(subscription: subscription),
               ],
             ],
@@ -306,8 +255,11 @@ class _ManualPanel extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 9),
                 child: _ServerTile(
                   server: server,
+                  expired: controller.isServerExpired(server.id),
                   selected: controller.selectedServerId == server.id,
-                  enabled: controller.connectionState != VpnConnectionState.connected,
+                  enabled: controller.connectionState !=
+                          VpnConnectionState.connected &&
+                      !controller.isServerExpired(server.id),
                   onTap: () => unawaited(controller.selectServer(server.id)),
                 ),
               );
@@ -374,53 +326,30 @@ class _ManualPanel extends StatelessWidget {
   }
 }
 
-class _SelectedServerCard extends StatelessWidget {
-  const _SelectedServerCard({required this.server, required this.onTap});
+class _SelectedServerLink extends StatelessWidget {
+  const _SelectedServerLink({
+    required this.server,
+    required this.expired,
+    required this.onTap,
+  });
 
   final ServerProfile server;
+  final bool expired;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 13),
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).dividerColor),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
-            children: <Widget>[
-              const Icon(Icons.public_rounded),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      server.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    Text(
-                      server.protocolLabel,
-                      textDirection: TextDirection.ltr,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              _LatencyChip(latency: server.latencyMs),
-              const SizedBox(width: 5),
-              const Icon(Icons.chevron_left_rounded),
-            ],
-          ),
+    return TextButton(
+      onPressed: onTap,
+      child: Text(
+        expired ? '${server.name} • اشتراک منقضی' : server.name,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: expired ? Theme.of(context).colorScheme.error : null,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -458,7 +387,9 @@ class _SubscriptionCard extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: Text(
-                  usage.daysRemaining == null
+                  usage.isExpired
+                      ? 'اشتراک منقضی شده'
+                      : usage.daysRemaining == null
                       ? '${subscription.servers.length} سرور'
                       : '${usage.daysRemaining} روز باقی‌مانده',
                   textAlign: TextAlign.start,
@@ -481,12 +412,14 @@ class _SubscriptionCard extends StatelessWidget {
 class _ServerTile extends StatelessWidget {
   const _ServerTile({
     required this.server,
+    required this.expired,
     required this.selected,
     required this.enabled,
     required this.onTap,
   });
 
   final ServerProfile server;
+  final bool expired;
   final bool selected;
   final bool enabled;
   final VoidCallback onTap;
@@ -547,7 +480,7 @@ class _ServerTile extends StatelessWidget {
                   ],
                 ),
               ),
-              _LatencyChip(latency: server.latencyMs),
+              _LatencyChip(latency: server.latencyMs, expired: expired),
             ],
           ),
         ),
@@ -557,17 +490,22 @@ class _ServerTile extends StatelessWidget {
 }
 
 class _LatencyChip extends StatelessWidget {
-  const _LatencyChip({required this.latency});
+  const _LatencyChip({required this.latency, this.expired = false});
 
   final int? latency;
+  final bool expired;
 
   @override
   Widget build(BuildContext context) {
-    final bool active = latency != null;
+    final bool active = latency != null && !expired;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: active
+        color: expired
+            ? (Theme.of(context).brightness == Brightness.light
+                ? const Color(0xfffdeDEE)
+                : const Color(0xff3a2024))
+            : active
             ? (Theme.of(context).brightness == Brightness.light
                 ? const Color(0xffeef8f1)
                 : const Color(0xff183426))
@@ -575,10 +513,14 @@ class _LatencyChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        active ? '${latency}ms' : '—',
+        expired ? 'منقضی' : active ? '${latency}ms' : '—',
         textDirection: TextDirection.ltr,
         style: TextStyle(
-          color: active ? const Color(0xff16834f) : null,
+          color: expired
+              ? Theme.of(context).colorScheme.error
+              : active
+                  ? const Color(0xff16834f)
+                  : null,
           fontSize: 12,
           fontWeight: FontWeight.w900,
         ),

@@ -15,4 +15,21 @@ void main() {
     expect(usage.expiryUnix, 2000000000);
     expect(usage.fraction, closeTo(0.375, 0.001));
   });
+
+  test('recognizes an expired subscription at the exact expiry second', () {
+    const SubscriptionUsage usage = SubscriptionUsage(expiryUnix: 1000);
+
+    expect(
+      usage.isExpiredAt(
+        DateTime.fromMillisecondsSinceEpoch(1000 * 1000),
+      ),
+      isTrue,
+    );
+    expect(
+      usage.isExpiredAt(
+        DateTime.fromMillisecondsSinceEpoch(999 * 1000),
+      ),
+      isFalse,
+    );
+  });
 }

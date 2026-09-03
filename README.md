@@ -9,9 +9,11 @@
 - رابط فارسی، راست‌به‌چپ و واکنش‌گرا با حالت روشن و تیره
 - حالت خودکار (Smart Connect) و انتخاب دستی سرور
 - دریافت و بروزرسانی Subscription از HTTPS/HTTP
+- افزودن مستقیم لینک اشتراک یا کانفیگ سرور از Clipboard
 - پشتیبانی از VMess، VLESS، Trojan، Shadowsocks و SOCKS
 - پشتیبانی از TLS، REALITY، TCP، WebSocket، gRPC، HTTPUpgrade، XHTTP و KCP
-- تست هم‌زمان دسترسی سرورها و انتخاب کمترین تأخیر قابل‌دسترسی
+- تشخیص انقضای Subscription، حذف پینگ قبلی و جلوگیری از اتصال به سرور منقضی
+- تست هم‌زمان دسترسی سرورهای معتبر و انتخاب کمترین تأخیر قابل‌دسترسی
 - اجرای Xray به‌عنوان Process مستقل و بررسی Config پیش از اتصال
 - Local SOCKS و HTTP proxy با پورت‌های قابل‌تنظیم
 - تنظیم Windows System Proxy بدون نیاز به Administrator
@@ -21,6 +23,7 @@
 - System Tray؛ بستن پنجره برنامه را در Tray نگه می‌دارد
 - ذخیرهٔ همهٔ اطلاعات در پوشهٔ `portable-data` کنار برنامه
 - CI برای Analyze، Test، Build و تولید ZIP پرتابل Windows x64
+- فونت فارسی آزاد Vazirmatn UI و چیدمان نزدیک به رابط Android MobileTina
 
 > حالت TUN در نسخهٔ 0.1 فعال نیست. System Proxy فقط ترافیک برنامه‌هایی را پوشش می‌دهد که تنظیم Proxy ویندوز را رعایت می‌کنند. TUN/Wintun پس از تثبیت این پایه اضافه می‌شود.
 
