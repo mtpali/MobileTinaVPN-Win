@@ -72,7 +72,9 @@ class _RecordingLatencyService extends LatencyService {
   @override
   Future<Map<String, int?>> testAll(
     Iterable<ServerProfile> servers, {
-    int concurrency = 12,
+    required String corePath,
+    required Directory runtimeDirectory,
+    int concurrency = 4,
   }) async {
     tested.addAll(servers);
     return <String, int?>{

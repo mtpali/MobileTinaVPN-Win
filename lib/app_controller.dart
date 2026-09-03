@@ -243,8 +243,11 @@ class AppController extends ChangeNotifier {
         .where((Subscription subscription) => !subscription.isExpired)
         .expand((Subscription subscription) => subscription.servers)
         .toList(growable: false);
-    final Map<String, int?> results =
-        await _latencyService.testAll(eligibleServers);
+    final Map<String, int?> results = await _latencyService.testAll(
+      eligibleServers,
+      corePath: core.corePath,
+      runtimeDirectory: store.runtimeConfigFile.parent,
+    );
     subscriptions = subscriptions.map((Subscription subscription) {
       return subscription.copyWith(
         servers: subscription.servers.map((ServerProfile server) {
