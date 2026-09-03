@@ -37,7 +37,15 @@ An `active-session.json` marker and the saved proxy snapshot make the sequence r
 
 Flutter runtime already uses a directory called `data`, so user-owned portable state intentionally uses `portable-data` to avoid collisions during Flutter upgrades.
 
-`state.json` has an explicit `schemaVersion`. Writes use a temporary file and rename so a process interruption cannot leave a partially written main state file.
+`state.dat` contains an authenticated AES-256-GCM envelope around the versioned
+JSON state. Writes use a temporary file and rename so a process interruption
+cannot leave a partially written main state file. Existing plaintext
+`state.json` files are migrated once and then deleted.
+
+Official release builds obfuscate Dart AOT names and split debug information
+outside the portable directory. Artwork and Vazirmatn font files are stored as
+authenticated, compressed `.mtv` payloads and decrypted only in memory. This is
+application hardening against casual extraction, not hardware-backed secrecy.
 
 ## Supported profile surface
 

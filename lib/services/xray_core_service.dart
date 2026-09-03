@@ -96,6 +96,7 @@ class XrayCoreService {
       runInShell: false,
     );
     if (check.exitCode != 0) {
+      await _deleteRuntimeConfig();
       await _store.appendLog('Xray config check failed: ${check.stderr}');
       throw const CoreException('تنظیمات این سرور توسط Xray پذیرفته نشد.');
     }
@@ -118,6 +119,7 @@ class XrayCoreService {
         if (identical(_process, process)) {
           _process = null;
           await _restorePreviousProxy();
+          await _deleteRuntimeConfig();
           if (await _store.activeSessionFile.exists()) {
             await _store.activeSessionFile.delete();
           }
@@ -150,6 +152,7 @@ class XrayCoreService {
             : 'هستهٔ اتصال با خطای $exitCode متوقف شد.',
       );
     }
+    await _deleteRuntimeConfig();
 
     if (settings.systemProxy) {
       try {
@@ -184,6 +187,7 @@ class XrayCoreService {
       if (await _store.activeSessionFile.exists()) {
         await _store.activeSessionFile.delete();
       }
+      await _deleteRuntimeConfig();
       await _store.appendLog('Disconnected.');
     }
   }
@@ -237,5 +241,11 @@ class XrayCoreService {
       );
     }
     await _store.previousProxyFile.delete();
+  }
+
+  Future<void> _deleteRuntimeConfig() async {
+    if (await _store.runtimeConfigFile.exists()) {
+      await _store.runtimeConfigFile.delete();
+    }
   }
 }

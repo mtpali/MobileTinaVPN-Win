@@ -42,7 +42,8 @@ jobs:
         run: |
           flutter config --enable-windows-desktop
           flutter pub get
-          flutter build windows --release
+          $symbolsDir = Join-Path $env:RUNNER_TEMP 'mobiletina-private-symbols'
+          flutter build windows --release --obfuscate --split-debug-info="$symbolsDir" --tree-shake-icons
       - name: Add verified Xray core
         shell: pwsh
         run: |
@@ -58,9 +59,32 @@ jobs:
           New-Item -ItemType Directory -Force -Path $coreDir | Out-Null
           Expand-Archive -Path $xrayArchive -DestinationPath $coreDir -Force
           Copy-Item README.md, LICENSE, THIRD_PARTY_NOTICES.md -Destination $releaseDir
+          Copy-Item assets/fonts/OFL.txt -Destination (Join-Path $releaseDir 'VAZIRMATN_OFL.txt')
           $portableData = Join-Path $releaseDir 'portable-data'
           New-Item -ItemType Directory -Force -Path $portableData | Out-Null
           Set-Content -Path (Join-Path $portableData 'README.txt') -Value 'MobileTinaVPN stores portable user data in this directory.'
+      - name: Verify release hardening
+        shell: pwsh
+        run: |
+          $releaseDir = Join-Path $env:GITHUB_WORKSPACE 'build\windows\x64\runner\Release'
+          $flutterAssets = Join-Path $releaseDir 'data\flutter_assets'
+          $protected = @(Get-ChildItem -Path $flutterAssets -Recurse -File -Filter '*.mtv')
+          if ($protected.Count -ne 10) {
+            throw "Expected 10 protected asset payloads, found $($protected.Count)."
+          }
+          $rawExtensions = @('.webp', '.png', '.jpg', '.jpeg', '.ttf')
+          $rawAssets = @(Get-ChildItem -Path $flutterAssets -Recurse -File | Where-Object {
+            $rawExtensions -contains $_.Extension.ToLowerInvariant()
+          })
+          if ($rawAssets.Count -ne 0) {
+            throw "Unprotected visual/font assets found: $($rawAssets.FullName -join ', ')"
+          }
+          $debugFiles = @(Get-ChildItem -Path $releaseDir -Recurse -File | Where-Object {
+            $_.Extension -in @('.pdb', '.symbols', '.map')
+          })
+          if ($debugFiles.Count -ne 0) {
+            throw "Debug symbols leaked into portable output: $($debugFiles.FullName -join ', ')"
+          }
       - name: Smoke test Windows executable
         shell: pwsh
         run: |

@@ -22,10 +22,17 @@ MobileTinaVPN for Windows includes or is distributed with the following componen
 - License: BSD 3-Clause
 - Used to render a local QR code for sharing an individual server.
 
+## cryptography
+
+- Project: <https://github.com/dint-dev/cryptography>
+- Version constraint: `^2.7.0`
+- License: Apache License 2.0
+- Used for AES-256-GCM protection of bundled assets and portable state.
+
 ## MobileTinaVPN artwork
 
 - Source: <https://github.com/mtpali/MobileTinaVPN>
-- The connection-state and branding artwork is copied byte-for-byte from the Android project.
+- The decrypted connection-state and branding artwork matches the Android project byte-for-byte; the Windows release stores it in authenticated protected payloads.
 - The Android project and this repository are distributed under GPL-3.0.
 
 The original license files shipped inside the Xray archive remain in the portable package.
@@ -36,3 +43,4 @@ The original license files shipped inside the Xray archive remain in the portabl
 - License: SIL Open Font License 1.1
 - Used as the bundled Persian UI font. The license text is stored at
   `assets/fonts/OFL.txt`.
+- The official portable build also places the license at `VAZIRMATN_OFL.txt`.

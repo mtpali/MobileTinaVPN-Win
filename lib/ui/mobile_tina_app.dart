@@ -5,9 +5,11 @@ import 'package:flutter/services.dart';
 
 import '../app_controller.dart';
 import '../models/app_settings.dart';
+import '../services/protected_assets.dart';
 import 'about_mobile_tina_screen.dart';
 import 'app_theme.dart';
 import 'home_screen.dart';
+import 'protected_image.dart';
 import 'servers_screen.dart';
 import 'settings_screen.dart';
 
@@ -328,8 +330,8 @@ class _SideBar extends StatelessWidget {
                   height: 48,
                   child: Transform.scale(
                     scale: 1.12,
-                    child: Image.asset(
-                      'assets/branding/icon.webp',
+                    child: const ProtectedImage(
+                      ProtectedImageAsset.brandIcon,
                       fit: BoxFit.cover,
                     ),
                   ),

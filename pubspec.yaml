@@ -1,12 +1,13 @@
 name: mobiletina_vpn
 description: MobileTinaVPN portable Windows client.
 publish_to: none
-version: 0.4.0+4
+version: 0.5.0+5
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
 
 dependencies:
+  cryptography: ^2.7.0
   flutter:
     sdk: flutter
   qr_flutter: ^4.1.0
@@ -18,14 +19,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/branding/
-    - assets/connection/
-  fonts:
-    - family: MobileTina
-      fonts:
-        - asset: assets/fonts/Vazirmatn-UI-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/Vazirmatn-UI-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Vazirmatn-UI-Bold.ttf
-          weight: 700
+    - assets/protected/

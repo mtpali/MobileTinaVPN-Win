@@ -7,6 +7,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../app_controller.dart';
 import '../models/server_profile.dart';
 import '../models/subscription.dart';
+import '../services/protected_assets.dart';
+import 'protected_image.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -174,7 +176,7 @@ class _AutomaticPanel extends StatelessWidget {
                       : () => unawaited(controller.toggleConnection(smart: true)),
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 260),
-                    child: Image.asset(
+                    child: ProtectedImage(
                       _imageForState(controller.connectionState),
                       key: ValueKey<VpnConnectionState>(controller.connectionState),
                       width: 236,
@@ -288,10 +290,10 @@ class _ManualPanel extends StatelessWidget {
                   onTap: controller.isBusy
                       ? null
                       : () => unawaited(controller.toggleConnection()),
-                  child: Image.asset(
+                  child: ProtectedImage(
                     controller.connectionState == VpnConnectionState.connected
-                        ? 'assets/connection/manual_on.webp'
-                        : 'assets/connection/manual_off.webp',
+                        ? ProtectedImageAsset.manualOn
+                        : ProtectedImageAsset.manualOff,
                   ),
                 ),
               ),
@@ -566,13 +568,13 @@ class _LatencyChip extends StatelessWidget {
   }
 }
 
-String _imageForState(VpnConnectionState state) {
+ProtectedImageAsset _imageForState(VpnConnectionState state) {
   return switch (state) {
-    VpnConnectionState.disconnected => 'assets/connection/idle.webp',
+    VpnConnectionState.disconnected => ProtectedImageAsset.disconnected,
     VpnConnectionState.testing || VpnConnectionState.connecting =>
-      'assets/connection/connecting.webp',
-    VpnConnectionState.connected => 'assets/connection/connected.webp',
-    VpnConnectionState.failed => 'assets/connection/error.webp',
+      ProtectedImageAsset.connecting,
+    VpnConnectionState.connected => ProtectedImageAsset.connected,
+    VpnConnectionState.failed => ProtectedImageAsset.failed,
   };
 }
 

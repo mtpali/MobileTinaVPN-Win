@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../models/app_settings.dart';
 import '../models/subscription.dart';
+import 'vault_cipher.dart';
 
 class StoredState {
   const StoredState({
@@ -25,7 +26,9 @@ class PortableStore {
 
   final Directory root;
 
-  File get stateFile => File('${root.path}${Platform.pathSeparator}state.json');
+  File get stateFile => File('${root.path}${Platform.pathSeparator}state.dat');
+  File get _legacyStateFile =>
+      File('${root.path}${Platform.pathSeparator}state.json');
   File get runtimeConfigFile => File(
         '${root.path}${Platform.pathSeparator}runtime'
         '${Platform.pathSeparator}xray.json',
@@ -51,18 +54,26 @@ class PortableStore {
 
   Future<StoredState> load() async {
     await initialize();
-    if (!await stateFile.exists()) {
+    final bool encryptedStateExists = await stateFile.exists();
+    final bool legacyStateExists = await _legacyStateFile.exists();
+    if (!encryptedStateExists && !legacyStateExists) {
       return const StoredState(
         settings: AppSettings(),
         subscriptions: <Subscription>[],
       );
     }
     try {
-      final Object? decoded = jsonDecode(await stateFile.readAsString());
+      final String contents = encryptedStateExists
+          ? await VaultCipher.instance.openText(
+              await stateFile.readAsBytes(),
+              context: 'portable-state-v2',
+            )
+          : await _legacyStateFile.readAsString();
+      final Object? decoded = jsonDecode(contents);
       if (decoded is! Map<String, dynamic>) throw const FormatException();
       final List<Object?> rawSubscriptions =
           decoded['subscriptions'] as List<Object?>? ?? <Object?>[];
-      return StoredState(
+      final StoredState state = StoredState(
         settings: AppSettings.fromJson(
           decoded['settings']! as Map<String, Object?>,
         ),
@@ -74,6 +85,12 @@ class PortableStore {
             .toList(),
         selectedServerId: decoded['selectedServerId'] as String?,
       );
+      if (!encryptedStateExists) {
+        await save(state);
+        await _legacyStateFile.delete();
+        await appendLog('Portable state migrated to protected storage.');
+      }
+      return state;
     } on Object catch (error) {
       await appendLog('State file could not be read: $error');
       return const StoredState(
@@ -96,7 +113,13 @@ class PortableStore {
         'selectedServerId': state.selectedServerId,
       },
     );
-    await temporary.writeAsString(contents, flush: true);
+    await temporary.writeAsBytes(
+      await VaultCipher.instance.sealText(
+        contents,
+        context: 'portable-state-v2',
+      ),
+      flush: true,
+    );
     if (await stateFile.exists()) await stateFile.delete();
     await temporary.rename(stateFile.path);
   }
