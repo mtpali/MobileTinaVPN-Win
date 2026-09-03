@@ -77,6 +77,11 @@ class WindowsPlatformService {
     if (Platform.isWindows) await _channel.invokeMethod<void>('showWindow');
   }
 
+  Future<void> openUrl(String url) async {
+    if (!Platform.isWindows) return;
+    await _channel.invokeMethod<void>('openUrl', url);
+  }
+
   Future<void> quitApplication() async {
     if (Platform.isWindows) await _channel.invokeMethod<void>('quitApplication');
   }

@@ -33,7 +33,29 @@ void main() {
     expect(await controller.importServersFromClipboard('$link\n$link'), 1);
     expect(controller.subscriptions, hasLength(1));
     expect(controller.subscriptions.single.isRemote, isFalse);
+    expect(controller.subscriptions.single.name, 'instagram : mobile.tina');
     expect(controller.servers, hasLength(1));
+  });
+
+  test('failed end-to-end probes mark servers inactive', () async {
+    final AppController controller = AppController(
+      store: PortableStore(executableDirectory: temporaryDirectory),
+      latencyService: _RecordingLatencyService(result: null),
+    );
+    controller.subscriptions = <Subscription>[
+      Subscription(
+        id: 'active',
+        name: 'Active',
+        url: 'https://example.com/sub',
+        servers: <ServerProfile>[_server()],
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    await controller.testServers();
+
+    expect(controller.servers.single.latencyMs, -1);
+    expect(controller.servers.single.isInactive, isTrue);
   });
 
   test('expired subscriptions are excluded from latency tests', () async {
@@ -67,6 +89,9 @@ void main() {
 }
 
 class _RecordingLatencyService extends LatencyService {
+  _RecordingLatencyService({this.result = 42});
+
+  final int? result;
   final List<ServerProfile> tested = <ServerProfile>[];
 
   @override
@@ -78,7 +103,7 @@ class _RecordingLatencyService extends LatencyService {
   }) async {
     tested.addAll(servers);
     return <String, int?>{
-      for (final ServerProfile server in servers) server.id: 42,
+      for (final ServerProfile server in servers) server.id: result,
     };
   }
 }

@@ -1,15 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../app_controller.dart';
 import '../models/app_settings.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({required this.controller, super.key});
+  const SettingsScreen({
+    required this.controller,
+    required this.onOpenAbout,
+    super.key,
+  });
 
   final AppController controller;
+  final VoidCallback onOpenAbout;
 
   @override
   Widget build(BuildContext context) {
@@ -122,29 +126,17 @@ class SettingsScreen extends StatelessWidget {
               leading: Icon(Icons.info_outline_rounded),
               title: Text('MobileTinaVPN for Windows'),
               subtitle: Text(
-                'نسخه 0.2.0 • Flutter Desktop • Xray Core\n'
+                'نسخه 0.3.0 • نسخهٔ پرتابل ویندوز\n'
                 'داده‌ها به‌صورت پرتابل در پوشهٔ portable-data نگهداری می‌شوند.',
               ),
             ),
             const Divider(height: 1),
             ListTile(
-              leading: const Icon(Icons.code_rounded),
-              title: const Text('سورس پروژه'),
-              subtitle: const Text(
-                'github.com/mtpali/MobileTinaVPN-Win',
-                textDirection: TextDirection.ltr,
-              ),
-              trailing: IconButton(
-                tooltip: 'کپی',
-                onPressed: () => unawaited(
-                  Clipboard.setData(
-                    const ClipboardData(
-                      text: 'https://github.com/mtpali/MobileTinaVPN-Win',
-                    ),
-                  ),
-                ),
-                icon: const Icon(Icons.copy_rounded),
-              ),
+              leading: const Icon(Icons.storefront_rounded),
+              title: const Text('درباره موبایل تینا'),
+              subtitle: const Text('شبکه‌های اجتماعی و آدرس فروشگاه‌ها'),
+              trailing: const Icon(Icons.chevron_left_rounded),
+              onTap: onOpenAbout,
             ),
           ],
         ),

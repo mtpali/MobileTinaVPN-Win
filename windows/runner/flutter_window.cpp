@@ -337,6 +337,25 @@ void FlutterWindow::ConfigurePlatformChannel() {
           return;
         }
 
+        if (call.method_name() == "openUrl") {
+          const auto* value =
+              std::get_if<std::string>(call.arguments());
+          if (value == nullptr || value->rfind("https://", 0) != 0) {
+            result->Error("arguments", "Only HTTPS links are supported");
+            return;
+          }
+          const std::wstring target = Utf16FromUtf8(*value);
+          const auto status = reinterpret_cast<INT_PTR>(ShellExecuteW(
+              GetHandle(), L"open", target.c_str(), nullptr, nullptr,
+              SW_SHOWNORMAL));
+          if (status <= 32) {
+            result->Error("shell", "Windows could not open the link");
+          } else {
+            result->Success();
+          }
+          return;
+        }
+
         if (call.method_name() == "quitApplication") {
           quit_requested_ = true;
           RemoveTrayIcon();

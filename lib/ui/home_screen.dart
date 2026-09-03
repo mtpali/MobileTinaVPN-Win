@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../app_controller.dart';
 import '../models/server_profile.dart';
@@ -259,8 +261,12 @@ class _ManualPanel extends StatelessWidget {
                   selected: controller.selectedServerId == server.id,
                   enabled: controller.connectionState !=
                           VpnConnectionState.connected &&
-                      !controller.isServerExpired(server.id),
+                      !controller.isServerExpired(server.id) &&
+                      !server.isInactive,
                   onTap: () => unawaited(controller.selectServer(server.id)),
+                  onShare: () => unawaited(
+                    _showServerShareDialog(context, server),
+                  ),
                 ),
               );
             },
@@ -374,14 +380,16 @@ class _SubscriptionCard extends StatelessWidget {
       child: Column(
         children: <Widget>[
           Text(subscription.name, style: const TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: usage.total > 0 ? usage.fraction : null,
-              minHeight: 8,
+          if (usage.total > 0) ...<Widget>[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: usage.fraction,
+                minHeight: 8,
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 10),
           Row(
             children: <Widget>[
@@ -416,6 +424,7 @@ class _ServerTile extends StatelessWidget {
     required this.selected,
     required this.enabled,
     required this.onTap,
+    required this.onShare,
   });
 
   final ServerProfile server;
@@ -423,6 +432,7 @@ class _ServerTile extends StatelessWidget {
   final bool selected;
   final bool enabled;
   final VoidCallback onTap;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -469,7 +479,15 @@ class _ServerTile extends StatelessWidget {
                       server.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: server.isInactive
+                            ? Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.62)
+                            : null,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -481,6 +499,12 @@ class _ServerTile extends StatelessWidget {
                 ),
               ),
               _LatencyChip(latency: server.latencyMs, expired: expired),
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: 'اشتراک‌گذاری سرور',
+                onPressed: onShare,
+                icon: const Icon(Icons.qr_code_2_rounded),
+              ),
             ],
           ),
         ),
@@ -497,7 +521,8 @@ class _LatencyChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool active = latency != null && !expired;
+    final bool active = latency != null && latency! > 0 && !expired;
+    final bool inactive = latency != null && latency! < 0 && !expired;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -505,22 +530,34 @@ class _LatencyChip extends StatelessWidget {
             ? (Theme.of(context).brightness == Brightness.light
                 ? const Color(0xfffdeDEE)
                 : const Color(0xff3a2024))
-            : active
-            ? (Theme.of(context).brightness == Brightness.light
-                ? const Color(0xffeef8f1)
-                : const Color(0xff183426))
-            : Theme.of(context).colorScheme.surfaceContainerHighest,
+            : inactive
+                ? (Theme.of(context).brightness == Brightness.light
+                    ? const Color(0xfffdeDEE)
+                    : const Color(0xff3a2024))
+                : active
+                    ? (Theme.of(context).brightness == Brightness.light
+                        ? const Color(0xffeef8f1)
+                        : const Color(0xff183426))
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        expired ? 'منقضی' : active ? '${latency}ms' : '—',
+        expired
+            ? 'منقضی'
+            : inactive
+                ? 'غیرفعال'
+                : active
+                    ? '${latency}ms'
+                    : '—',
         textDirection: TextDirection.ltr,
         style: TextStyle(
           color: expired
               ? Theme.of(context).colorScheme.error
-              : active
-                  ? const Color(0xff16834f)
-                  : null,
+              : inactive
+                  ? Theme.of(context).colorScheme.error
+                  : active
+                      ? const Color(0xff16834f)
+                      : null,
           fontSize: 12,
           fontWeight: FontWeight.w900,
         ),
@@ -531,9 +568,9 @@ class _LatencyChip extends StatelessWidget {
 
 String _imageForState(VpnConnectionState state) {
   return switch (state) {
-    VpnConnectionState.disconnected || VpnConnectionState.testing =>
-      'assets/connection/idle.webp',
-    VpnConnectionState.connecting => 'assets/connection/connecting.webp',
+    VpnConnectionState.disconnected => 'assets/connection/idle.webp',
+    VpnConnectionState.testing || VpnConnectionState.connecting =>
+      'assets/connection/connecting.webp',
     VpnConnectionState.connected => 'assets/connection/connected.webp',
     VpnConnectionState.failed => 'assets/connection/error.webp',
   };
@@ -562,8 +599,69 @@ String _connectionDetail(AppController controller) {
   if (controller.connectionState == VpnConnectionState.testing) {
     return 'سرورهای قابل‌دسترسی بررسی می‌شوند';
   }
-  if (server?.latencyMs != null) return 'پینگ: ${server!.latencyMs} میلی‌ثانیه';
+  if (server?.isInactive ?? false) return 'سرور غیرفعال است';
+  if (server?.hasSuccessfulLatency ?? false) {
+    return 'پینگ: ${server!.latencyMs} میلی‌ثانیه';
+  }
   return server == null ? 'هنوز سروری اضافه نشده است' : 'برای اتصال، دکمه را بزنید';
+}
+
+Future<void> _showServerShareDialog(
+  BuildContext context,
+  ServerProfile server,
+) async {
+  await showDialog<void>(
+    context: context,
+    builder: (BuildContext dialogContext) => AlertDialog(
+      title: Text(server.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+      content: SizedBox(
+        width: 330,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: QrImageView(
+                data: server.sourceUri,
+                version: QrVersions.auto,
+                size: 260,
+                backgroundColor: Colors.white,
+                errorCorrectionLevel: QrErrorCorrectLevel.M,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              server.protocolLabel,
+              textDirection: TextDirection.ltr,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('بستن'),
+        ),
+        FilledButton.icon(
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: server.sourceUri));
+            if (!dialogContext.mounted || !context.mounted) return;
+            Navigator.pop(dialogContext);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('کانفیگ سرور کپی شد.')),
+            );
+          },
+          icon: const Icon(Icons.copy_rounded),
+          label: const Text('کپی کانفیگ'),
+        ),
+      ],
+    ),
+  );
 }
 
 String _bytes(int value) {

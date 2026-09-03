@@ -53,6 +53,10 @@ class ServerProfile {
   final bool allowInsecure;
   final int? latencyMs;
 
+  bool get hasSuccessfulLatency => latencyMs != null && latencyMs! > 0;
+
+  bool get isInactive => latencyMs != null && latencyMs! < 0;
+
   String get protocolLabel => switch (protocol) {
         ProxyProtocol.vmess => 'VMess',
         ProxyProtocol.vless => 'VLESS',

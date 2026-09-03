@@ -14,6 +14,8 @@ import 'services/xray_core_service.dart';
 
 enum VpnConnectionState { disconnected, testing, connecting, connected, failed }
 
+const String _clipboardSubscriptionName = 'instagram : mobile.tina';
+
 class AppController extends ChangeNotifier {
   AppController({
     PortableStore? store,
@@ -89,7 +91,15 @@ class AppController extends ChangeNotifier {
     await core.recoverInterruptedSession();
     final StoredState loaded = await store.load();
     settings = loaded.settings;
-    subscriptions = loaded.subscriptions;
+    subscriptions = loaded.subscriptions.map((Subscription subscription) {
+      if (subscription.id == 'local-clipboard' ||
+          subscription.name == 'سرورهای کلیپ‌بورد' ||
+          subscription.name == 'اشتراک کلیپ‌بورد' ||
+          subscription.name == 'اشتراک کلیپ بورد') {
+        return subscription.copyWith(name: _clipboardSubscriptionName);
+      }
+      return subscription;
+    }).toList();
     subscriptions = subscriptions.map((Subscription subscription) {
       if (!subscription.isExpired) return subscription;
       return subscription.copyWith(
@@ -139,7 +149,7 @@ class AppController extends ChangeNotifier {
     if (uri != null &&
         (uri.scheme == 'https' || uri.scheme == 'http') &&
         !payload.contains(RegExp(r'[\r\n]'))) {
-      await addSubscription(name: 'اشتراک کلیپ‌بورد', url: payload);
+      await addSubscription(name: _clipboardSubscriptionName, url: payload);
       return subscriptions
           .firstWhere((Subscription item) => item.url == uri.toString())
           .servers
@@ -165,7 +175,7 @@ class AppController extends ChangeNotifier {
     };
     final Subscription local = Subscription(
       id: localId,
-      name: 'سرورهای کلیپ‌بورد',
+      name: _clipboardSubscriptionName,
       url: '',
       servers: merged.values.toList(growable: false),
       updatedAt: DateTime.now(),
@@ -254,10 +264,7 @@ class AppController extends ChangeNotifier {
           if (subscription.isExpired) {
             return server.copyWith(clearLatency: true);
           }
-          return server.copyWith(
-            latencyMs: results[server.id],
-            clearLatency: results[server.id] == null,
-          );
+          return server.copyWith(latencyMs: results[server.id] ?? -1);
         }).toList(),
       );
     }).toList();
@@ -280,7 +287,7 @@ class AppController extends ChangeNotifier {
     final List<ServerProfile> usable = servers
         .where(
           (ServerProfile item) =>
-              item.latencyMs != null && !isServerExpired(item.id),
+              item.hasSuccessfulLatency && !isServerExpired(item.id),
         )
         .toList()
       ..sort(
@@ -321,6 +328,12 @@ class AppController extends ChangeNotifier {
     final Subscription? subscription = subscriptionForServer(server.id);
     if (subscription?.isExpired ?? false) {
       errorMessage = 'اشتراک «${subscription!.name}» منقضی شده است.';
+      connectionState = VpnConnectionState.failed;
+      notifyListeners();
+      return;
+    }
+    if (server.isInactive) {
+      errorMessage = 'این سرور غیرفعال است؛ ابتدا دوباره سرعت‌ها را بررسی کنید.';
       connectionState = VpnConnectionState.failed;
       notifyListeners();
       return;

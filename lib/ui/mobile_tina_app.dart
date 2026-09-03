@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_controller.dart';
 import '../models/app_settings.dart';
+import 'about_mobile_tina_screen.dart';
 import 'app_theme.dart';
 import 'home_screen.dart';
 import 'servers_screen.dart';
@@ -39,7 +40,7 @@ class MobileTinaApp extends StatelessWidget {
   }
 }
 
-enum AppPage { home, servers, settings }
+enum AppPage { home, about, servers, settings }
 
 class AppShell extends StatefulWidget {
   const AppShell({required this.controller, super.key});
@@ -60,19 +61,29 @@ class _AppShellState extends State<AppShell> {
           controller: widget.controller,
           onOpenServers: () => setState(() => page = AppPage.servers),
         ),
+      AppPage.about => AboutMobileTinaScreen(
+          platform: widget.controller.platform,
+        ),
       AppPage.servers => ServersScreen(controller: widget.controller),
-      AppPage.settings => SettingsScreen(controller: widget.controller),
+      AppPage.settings => SettingsScreen(
+          controller: widget.controller,
+          onOpenAbout: () => setState(() => page = AppPage.about),
+        ),
     };
+    final bool promotionalPage = page == AppPage.about;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
           switch (page) {
             AppPage.home => 'فیلترشکن',
+            AppPage.about => 'درباره موبایل تینا',
             AppPage.servers => 'سرورها و اشتراک‌ها',
             AppPage.settings => 'تنظیمات',
           },
         ),
+        backgroundColor: promotionalPage ? const Color(0xff111315) : null,
+        foregroundColor: promotionalPage ? Colors.white : null,
         actions: <Widget>[
           if (page == AppPage.home)
             IconButton(
@@ -130,10 +141,16 @@ class _SideBar extends StatelessWidget {
             children: <Widget>[
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: Image.asset(
-                  'assets/branding/icon.webp',
+                child: SizedBox(
                   width: 48,
                   height: 48,
+                  child: Transform.scale(
+                    scale: 1.12,
+                    child: Image.asset(
+                      'assets/branding/icon.webp',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -153,6 +170,13 @@ class _SideBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 34),
+          _NavButton(
+            selected: page == AppPage.about,
+            icon: Icons.storefront_rounded,
+            label: 'درباره موبایل تینا',
+            onTap: () => onSelected(AppPage.about),
+          ),
+          const Divider(height: 24),
           _NavButton(
             selected: page == AppPage.home,
             icon: Icons.home_rounded,

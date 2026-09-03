@@ -15,6 +15,13 @@ MobileTinaVPN for Windows includes or is distributed with the following componen
 - License: Mozilla Public License 2.0
 - Official Windows x64 archive SHA-256: `d004c39288ce9ada487c6f398c7c545f7d749e44bdfdd59dbc9f865afba4e1ad`
 
+## QR.Flutter
+
+- Project: <https://github.com/theyakka/qr.flutter>
+- Version: `4.1.0`
+- License: BSD 3-Clause
+- Used to render a local QR code for sharing an individual server.
+
 ## MobileTinaVPN artwork
 
 - Source: <https://github.com/mtpali/MobileTinaVPN>

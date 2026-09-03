@@ -121,7 +121,8 @@ class _ServersScreenState extends State<ServersScreen> {
                               widget.controller.selectedServerId == server.id,
                           enabled: widget.controller.connectionState !=
                                   VpnConnectionState.connected &&
-                              !widget.controller.isServerExpired(server.id),
+                              !widget.controller.isServerExpired(server.id) &&
+                              !server.isInactive,
                           onTap: () => unawaited(
                             widget.controller.selectServer(server.id),
                           ),
@@ -447,7 +448,15 @@ class _ServerCard extends StatelessWidget {
                       server.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        color: server.isInactive
+                            ? Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.62)
+                            : null,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     Text(
                       '${server.protocolLabel} • ${server.host}:${server.port}',
@@ -466,18 +475,28 @@ class _ServerCard extends StatelessWidget {
                       ? (Theme.of(context).brightness == Brightness.light
                           ? const Color(0xfffdeDEE)
                           : const Color(0xff3a2024))
-                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                      : server.isInactive
+                          ? (Theme.of(context).brightness == Brightness.light
+                              ? const Color(0xfffdeDEE)
+                              : const Color(0xff3a2024))
+                          : Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   expired
                       ? 'منقضی'
-                      : server.latencyMs == null
-                          ? '—'
-                          : '${server.latencyMs}ms',
+                      : server.isInactive
+                          ? 'غیرفعال'
+                          : server.latencyMs == null
+                              ? '—'
+                              : '${server.latencyMs}ms',
                   textDirection: TextDirection.ltr,
                   style: TextStyle(
-                    color: expired ? Theme.of(context).colorScheme.error : null,
+                    color: expired || server.isInactive
+                        ? Theme.of(context).colorScheme.error
+                        : null,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
