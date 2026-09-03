@@ -155,8 +155,6 @@ class VaultCipher {
       );
     } on FormatException {
       throw const VaultException('Protected payload is corrupted.');
-    } on ZLibException {
-      throw const VaultException('Protected payload is corrupted.');
     }
   }
 
