@@ -29,7 +29,7 @@ class SettingsScreen extends StatelessWidget {
           children: <Widget>[
             SwitchListTile(
               value: settings.systemProxy,
-              onChanged: controller.connectionState == ConnectionState.connected
+              onChanged: controller.connectionState == VpnConnectionState.connected
                   ? null
                   : (bool value) => unawaited(
                         controller.updateSettings(
@@ -51,7 +51,7 @@ class SettingsScreen extends StatelessWidget {
                 textDirection: TextDirection.ltr,
               ),
               trailing: const Icon(Icons.chevron_left_rounded),
-              onTap: controller.connectionState == ConnectionState.connected
+              onTap: controller.connectionState == VpnConnectionState.connected
                   ? null
                   : () => _editPorts(context),
             ),

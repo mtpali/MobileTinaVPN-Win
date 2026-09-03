@@ -90,7 +90,7 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          if (controller.connectionState == ConnectionState.connected)
+          if (controller.connectionState == VpnConnectionState.connected)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
               decoration: BoxDecoration(
@@ -226,7 +226,7 @@ class _AutomaticPanel extends StatelessWidget {
                     duration: const Duration(milliseconds: 260),
                     child: Image.asset(
                       _imageForState(controller.connectionState),
-                      key: ValueKey<ConnectionState>(controller.connectionState),
+                      key: ValueKey<VpnConnectionState>(controller.connectionState),
                       width: 250,
                       height: 250,
                     ),
@@ -307,7 +307,7 @@ class _ManualPanel extends StatelessWidget {
                 child: _ServerTile(
                   server: server,
                   selected: controller.selectedServerId == server.id,
-                  enabled: controller.connectionState != ConnectionState.connected,
+                  enabled: controller.connectionState != VpnConnectionState.connected,
                   onTap: () => unawaited(controller.selectServer(server.id)),
                 ),
               );
@@ -331,7 +331,7 @@ class _ManualPanel extends StatelessWidget {
                       ? null
                       : () => unawaited(controller.toggleConnection()),
                   child: Image.asset(
-                    controller.connectionState == ConnectionState.connected
+                    controller.connectionState == VpnConnectionState.connected
                         ? 'assets/connection/manual_on.webp'
                         : 'assets/connection/manual_off.webp',
                   ),
@@ -587,29 +587,29 @@ class _LatencyChip extends StatelessWidget {
   }
 }
 
-String _imageForState(ConnectionState state) {
+String _imageForState(VpnConnectionState state) {
   return switch (state) {
-    ConnectionState.disconnected || ConnectionState.testing =>
+    VpnConnectionState.disconnected || VpnConnectionState.testing =>
       'assets/connection/idle.webp',
-    ConnectionState.connecting => 'assets/connection/connecting.webp',
-    ConnectionState.connected => 'assets/connection/connected.webp',
-    ConnectionState.failed => 'assets/connection/error.webp',
+    VpnConnectionState.connecting => 'assets/connection/connecting.webp',
+    VpnConnectionState.connected => 'assets/connection/connected.webp',
+    VpnConnectionState.failed => 'assets/connection/error.webp',
   };
 }
 
-String _statusText(ConnectionState state) {
+String _statusText(VpnConnectionState state) {
   return switch (state) {
-    ConnectionState.disconnected => 'فیلترشکن خاموش است',
-    ConnectionState.testing => 'در حال یافتن بهترین سرور…',
-    ConnectionState.connecting => 'در حال اتصال…',
-    ConnectionState.connected => 'متصل شد',
-    ConnectionState.failed => 'اتصال ناموفق بود',
+    VpnConnectionState.disconnected => 'فیلترشکن خاموش است',
+    VpnConnectionState.testing => 'در حال یافتن بهترین سرور…',
+    VpnConnectionState.connecting => 'در حال اتصال…',
+    VpnConnectionState.connected => 'متصل شد',
+    VpnConnectionState.failed => 'اتصال ناموفق بود',
   };
 }
 
 String _connectionDetail(AppController controller) {
   final ServerProfile? server = controller.selectedServer;
-  if (controller.connectionState == ConnectionState.connected &&
+  if (controller.connectionState == VpnConnectionState.connected &&
       controller.connectedAt != null) {
     final Duration elapsed = DateTime.now().difference(controller.connectedAt!);
     final String hours = elapsed.inHours.toString().padLeft(2, '0');
@@ -617,7 +617,7 @@ String _connectionDetail(AppController controller) {
     final String seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
     return '$hours:$minutes:$seconds • ${server?.name ?? ''}';
   }
-  if (controller.connectionState == ConnectionState.testing) {
+  if (controller.connectionState == VpnConnectionState.testing) {
     return 'سرورهای قابل‌دسترسی بررسی می‌شوند';
   }
   if (server?.latencyMs != null) return 'پینگ: ${server!.latencyMs} میلی‌ثانیه';

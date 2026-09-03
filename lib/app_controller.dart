@@ -11,7 +11,7 @@ import 'services/subscription_service.dart';
 import 'services/windows_platform_service.dart';
 import 'services/xray_core_service.dart';
 
-enum ConnectionState { disconnected, testing, connecting, connected, failed }
+enum VpnConnectionState { disconnected, testing, connecting, connected, failed }
 
 class AppController extends ChangeNotifier {
   AppController({
@@ -36,7 +36,7 @@ class AppController extends ChangeNotifier {
   AppSettings settings = const AppSettings();
   List<Subscription> subscriptions = <Subscription>[];
   String? selectedServerId;
-  ConnectionState connectionState = ConnectionState.disconnected;
+  VpnConnectionState connectionState = VpnConnectionState.disconnected;
   String? errorMessage;
   DateTime? connectedAt;
   bool initialized = false;
@@ -65,8 +65,8 @@ class AppController extends ChangeNotifier {
     return subscriptions.firstOrNull;
   }
 
-  bool get isBusy => connectionState == ConnectionState.testing ||
-      connectionState == ConnectionState.connecting;
+  bool get isBusy => connectionState == VpnConnectionState.testing ||
+      connectionState == VpnConnectionState.connecting;
 
   Future<void> initialize() async {
     platform.initialize();
@@ -135,7 +135,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> removeSubscription(String id) async {
-    if (connectionState == ConnectionState.connected) await disconnect();
+    if (connectionState == VpnConnectionState.connected) await disconnect();
     subscriptions = subscriptions
         .where((Subscription item) => item.id != id)
         .toList(growable: false);
@@ -145,17 +145,17 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> selectServer(String id) async {
-    if (isBusy || connectionState == ConnectionState.connected) return;
+    if (isBusy || connectionState == VpnConnectionState.connected) return;
     selectedServerId = id;
     await _persist();
     notifyListeners();
   }
 
   Future<void> testServers() async {
-    if (servers.isEmpty || isBusy || connectionState == ConnectionState.connected) {
+    if (servers.isEmpty || isBusy || connectionState == VpnConnectionState.connected) {
       return;
     }
-    connectionState = ConnectionState.testing;
+    connectionState = VpnConnectionState.testing;
     errorMessage = null;
     notifyListeners();
     final Map<String, int?> results = await _latencyService.testAll(servers);
@@ -169,17 +169,17 @@ class AppController extends ChangeNotifier {
         }).toList(),
       );
     }).toList();
-    connectionState = ConnectionState.disconnected;
+    connectionState = VpnConnectionState.disconnected;
     await _persist();
     notifyListeners();
   }
 
   Future<void> smartConnect() async {
-    if (connectionState == ConnectionState.connected) return;
+    if (connectionState == VpnConnectionState.connected) return;
     if (servers.isEmpty || isBusy) {
       if (servers.isEmpty) {
         errorMessage = 'ابتدا یک اشتراک اضافه کنید.';
-        connectionState = ConnectionState.failed;
+        connectionState = VpnConnectionState.failed;
         notifyListeners();
       }
       return;
@@ -194,7 +194,7 @@ class AppController extends ChangeNotifier {
       );
     if (usable.isEmpty) {
       errorMessage = 'هیچ سرور فعالی پیدا نشد.';
-      connectionState = ConnectionState.failed;
+      connectionState = VpnConnectionState.failed;
       notifyListeners();
       return;
     }
@@ -204,7 +204,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> toggleConnection({bool smart = false}) async {
-    if (connectionState == ConnectionState.connected) {
+    if (connectionState == VpnConnectionState.connected) {
       await disconnect();
     } else if (smart) {
       await smartConnect();
@@ -218,21 +218,21 @@ class AppController extends ChangeNotifier {
     if (server == null || isBusy) {
       if (server == null) {
         errorMessage = 'ابتدا یک سرور انتخاب کنید.';
-        connectionState = ConnectionState.failed;
+        connectionState = VpnConnectionState.failed;
         notifyListeners();
       }
       return;
     }
-    connectionState = ConnectionState.connecting;
+    connectionState = VpnConnectionState.connecting;
     errorMessage = null;
     notifyListeners();
     try {
       await core.connect(server, settings);
       connectedAt = DateTime.now();
-      connectionState = ConnectionState.connected;
+      connectionState = VpnConnectionState.connected;
     } on Object catch (error) {
       errorMessage = '$error';
-      connectionState = ConnectionState.failed;
+      connectionState = VpnConnectionState.failed;
       await store.appendLog('Connection failed: $error');
     }
     notifyListeners();
@@ -241,7 +241,7 @@ class AppController extends ChangeNotifier {
   Future<void> disconnect() async {
     await core.disconnect();
     connectedAt = null;
-    connectionState = ConnectionState.disconnected;
+    connectionState = VpnConnectionState.disconnected;
     errorMessage = null;
     notifyListeners();
   }
@@ -255,13 +255,13 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> reset() async {
-    if (connectionState == ConnectionState.connected) await disconnect();
+    if (connectionState == VpnConnectionState.connected) await disconnect();
     await platform.setAutoStart(false);
     await store.reset();
     settings = const AppSettings();
     subscriptions = <Subscription>[];
     selectedServerId = null;
-    connectionState = ConnectionState.disconnected;
+    connectionState = VpnConnectionState.disconnected;
     notifyListeners();
   }
 
@@ -283,7 +283,7 @@ class AppController extends ChangeNotifier {
   void _handleUnexpectedCoreExit(int exitCode) {
     connectedAt = null;
     errorMessage = 'هستهٔ اتصال با خطای $exitCode متوقف شد.';
-    connectionState = ConnectionState.failed;
+    connectionState = VpnConnectionState.failed;
     notifyListeners();
   }
 }

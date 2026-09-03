@@ -120,7 +120,7 @@ class _ServersScreenState extends State<ServersScreen> {
                           selected:
                               widget.controller.selectedServerId == server.id,
                           enabled: widget.controller.connectionState !=
-                              ConnectionState.connected,
+                              VpnConnectionState.connected,
                           onTap: () => unawaited(
                             widget.controller.selectServer(server.id),
                           ),

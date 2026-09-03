@@ -8,19 +8,20 @@ void main() {
   final SubscriptionParser parser = SubscriptionParser();
 
   test('parses base64 encoded mixed subscription', () {
-    final String vmess = 'vmess://${base64Encode(utf8.encode(jsonEncode(<String, String>{
-          'v': '2',
-          'ps': 'Germany',
-          'add': 'example.com',
-          'port': '443',
-          'id': '11111111-1111-1111-1111-111111111111',
-          'scy': 'auto',
-          'net': 'ws',
-          'host': 'cdn.example.com',
-          'path': '/socket',
-          'tls': 'tls',
-          'sni': 'example.com',
-        })))}';
+    final String vmessJson = jsonEncode(<String, String>{
+      'v': '2',
+      'ps': 'Germany',
+      'add': 'example.com',
+      'port': '443',
+      'id': '11111111-1111-1111-1111-111111111111',
+      'scy': 'auto',
+      'net': 'ws',
+      'host': 'cdn.example.com',
+      'path': '/socket',
+      'tls': 'tls',
+      'sni': 'example.com',
+    });
+    final String vmess = 'vmess://${base64Encode(utf8.encode(vmessJson))}';
     const String vless =
         'vless://22222222-2222-2222-2222-222222222222@server.example:443'
         '?encryption=none&security=reality&type=tcp&sni=www.example.com'

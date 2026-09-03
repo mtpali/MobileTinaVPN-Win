@@ -128,7 +128,7 @@ class _SideBar extends StatelessWidget {
   });
 
   final AppPage page;
-  final ConnectionState state;
+  final VpnConnectionState state;
   final ValueChanged<AppPage> onSelected;
 
   @override
@@ -199,10 +199,10 @@ class _SideBar extends StatelessWidget {
             child: Row(
               children: <Widget>[
                 Icon(
-                  state == ConnectionState.connected
+                  state == VpnConnectionState.connected
                       ? Icons.verified_rounded
                       : Icons.shield_outlined,
-                  color: state == ConnectionState.connected
+                  color: state == VpnConnectionState.connected
                       ? const Color(0xff17a05d)
                       : colors.onSurfaceVariant,
                   size: 20,
@@ -210,7 +210,7 @@ class _SideBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    state == ConnectionState.connected
+                    state == VpnConnectionState.connected
                         ? 'اتصال سیستم فعال است'
                         : 'اتصال سیستم خاموش است',
                     style: const TextStyle(fontSize: 12),
