@@ -86,6 +86,93 @@ void main() {
     expect(latency.tested, isEmpty);
     expect(controller.servers.single.latencyMs, isNull);
   });
+
+  test('duplicate cleanup keeps the first equivalent server', () async {
+    final AppController controller = AppController(
+      store: PortableStore(executableDirectory: temporaryDirectory),
+    );
+    controller.subscriptions = <Subscription>[
+      Subscription(
+        id: 'remote',
+        name: 'Remote',
+        url: 'https://example.com/sub',
+        servers: <ServerProfile>[
+          _server(id: 'first', name: 'First'),
+        ],
+        updatedAt: DateTime.now(),
+      ),
+      Subscription(
+        id: 'local-clipboard',
+        name: 'Local',
+        url: '',
+        servers: <ServerProfile>[
+          _server(id: 'duplicate', name: 'Different remark'),
+        ],
+        updatedAt: DateTime.now(),
+      ),
+    ];
+    controller.selectedServerId = 'duplicate';
+
+    expect(await controller.removeDuplicateServers(), 1);
+    expect(controller.servers, hasLength(1));
+    expect(controller.servers.single.id, 'first');
+    expect(controller.subscriptions, hasLength(1));
+    expect(controller.selectedServerId, 'first');
+  });
+
+  test('inactive cleanup removes only failed probes', () async {
+    final AppController controller = AppController(
+      store: PortableStore(executableDirectory: temporaryDirectory),
+    );
+    controller.subscriptions = <Subscription>[
+      Subscription(
+        id: 'local-clipboard',
+        name: 'Local',
+        url: '',
+        servers: <ServerProfile>[
+          _server(id: 'inactive', latencyMs: -1),
+          _server(id: 'untested'),
+          _server(id: 'active', latencyMs: 48),
+        ],
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    expect(await controller.removeInactiveServers(), 1);
+    expect(
+      controller.servers.map((ServerProfile server) => server.id),
+      <String>['untested', 'active'],
+    );
+  });
+
+  test('remove all configs retains remote subscription metadata', () async {
+    final AppController controller = AppController(
+      store: PortableStore(executableDirectory: temporaryDirectory),
+    );
+    controller.subscriptions = <Subscription>[
+      Subscription(
+        id: 'remote',
+        name: 'Remote',
+        url: 'https://example.com/sub',
+        servers: <ServerProfile>[_server(id: 'remote-server')],
+        updatedAt: DateTime.now(),
+      ),
+      Subscription(
+        id: 'local-clipboard',
+        name: 'Local',
+        url: '',
+        servers: <ServerProfile>[_server(id: 'local-server')],
+        updatedAt: DateTime.now(),
+      ),
+    ];
+    controller.selectedServerId = 'local-server';
+
+    expect(await controller.removeAllServers(), 2);
+    expect(controller.servers, isEmpty);
+    expect(controller.subscriptions, hasLength(1));
+    expect(controller.subscriptions.single.id, 'remote');
+    expect(controller.selectedServerId, isNull);
+  });
 }
 
 class _RecordingLatencyService extends LatencyService {
@@ -108,16 +195,21 @@ class _RecordingLatencyService extends LatencyService {
   }
 }
 
-ServerProfile _server() {
-  return const ServerProfile(
-    id: 'server',
-    name: 'Server',
+ServerProfile _server({
+  String id = 'server',
+  String name = 'Server',
+  int? latencyMs,
+}) {
+  return ServerProfile(
+    id: id,
+    name: name,
     protocol: ProxyProtocol.vless,
     host: 'example.com',
     port: 443,
     secret: '11111111-1111-1111-1111-111111111111',
     sourceUri:
-        'vless://11111111-1111-1111-1111-111111111111@example.com:443',
+        'vless://11111111-1111-1111-1111-111111111111@example.com:443#$name',
     security: 'tls',
+    latencyMs: latencyMs,
   );
 }

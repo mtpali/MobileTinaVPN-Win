@@ -149,8 +149,8 @@ class _ServersScreenState extends State<ServersScreen> {
           builder: (BuildContext context, StateSetter setDialogState) {
             return AlertDialog(
               title: const Text('افزودن اشتراک'),
-              content: SizedBox(
-                width: 480,
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[

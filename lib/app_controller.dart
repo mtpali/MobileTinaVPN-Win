@@ -16,6 +16,29 @@ enum VpnConnectionState { disconnected, testing, connecting, connected, failed }
 
 const String _clipboardSubscriptionName = 'instagram : mobile.tina';
 
+typedef _ServerConnectionIdentity = ({
+  ProxyProtocol protocol,
+  String host,
+  int port,
+  String secret,
+  String method,
+  String network,
+  String security,
+  String sni,
+  String hostHeader,
+  String path,
+  String headerType,
+  String flow,
+  String fingerprint,
+  String alpn,
+  String publicKey,
+  String shortId,
+  String spiderX,
+  String serviceName,
+  String authority,
+  bool allowInsecure,
+});
+
 class AppController extends ChangeNotifier {
   AppController({
     PortableStore? store,
@@ -235,6 +258,63 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<int> removeDuplicateServers() async {
+    final Set<_ServerConnectionIdentity> seen = <_ServerConnectionIdentity>{};
+    int removed = 0;
+    final List<Subscription> cleaned = subscriptions.map(
+      (Subscription subscription) {
+        final List<ServerProfile> unique = <ServerProfile>[];
+        for (final ServerProfile server in subscription.servers) {
+          if (seen.add(_connectionIdentity(server))) {
+            unique.add(server);
+          } else {
+            removed += 1;
+          }
+        }
+        return subscription.copyWith(servers: unique);
+      },
+    ).toList();
+    if (removed == 0) return 0;
+    await _replaceServersAfterRemoval(cleaned);
+    return removed;
+  }
+
+  Future<int> removeInactiveServers() async {
+    final int before = servers.length;
+    final List<Subscription> cleaned = subscriptions
+        .map(
+          (Subscription subscription) => subscription.copyWith(
+            servers: subscription.servers
+                .where((ServerProfile server) => !server.isInactive)
+                .toList(growable: false),
+          ),
+        )
+        .toList(growable: false);
+    final int removed = before - cleaned.fold<int>(
+      0,
+      (int count, Subscription subscription) =>
+          count + subscription.servers.length,
+    );
+    if (removed == 0) return 0;
+    await _replaceServersAfterRemoval(cleaned);
+    return removed;
+  }
+
+  Future<int> removeAllServers() async {
+    final int removed = servers.length;
+    if (removed == 0) return 0;
+    final List<Subscription> emptied = subscriptions
+        .where((Subscription subscription) => subscription.isRemote)
+        .map(
+          (Subscription subscription) => subscription.copyWith(
+            servers: <ServerProfile>[],
+          ),
+        )
+        .toList(growable: false);
+    await _replaceServersAfterRemoval(emptied);
+    return removed;
+  }
+
   Future<void> selectServer(String id) async {
     if (isBusy || connectionState == VpnConnectionState.connected) return;
     selectedServerId = id;
@@ -395,10 +475,51 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  Future<void> _replaceServersAfterRemoval(
+    List<Subscription> replacement,
+  ) async {
+    if (connectionState == VpnConnectionState.connected) await disconnect();
+    subscriptions = replacement
+        .where(
+          (Subscription subscription) =>
+              subscription.isRemote || subscription.servers.isNotEmpty,
+        )
+        .toList(growable: false);
+    if (selectedServer == null) selectedServerId = servers.firstOrNull?.id;
+    errorMessage = null;
+    await _persist();
+    notifyListeners();
+  }
+
   void _handleUnexpectedCoreExit(int exitCode) {
     connectedAt = null;
     errorMessage = 'هستهٔ اتصال با خطای $exitCode متوقف شد.';
     connectionState = VpnConnectionState.failed;
     notifyListeners();
   }
+}
+
+_ServerConnectionIdentity _connectionIdentity(ServerProfile server) {
+  return (
+    protocol: server.protocol,
+    host: server.host.toLowerCase(),
+    port: server.port,
+    secret: server.secret,
+    method: server.method,
+    network: server.network,
+    security: server.security,
+    sni: server.sni.toLowerCase(),
+    hostHeader: server.hostHeader.toLowerCase(),
+    path: server.path,
+    headerType: server.headerType,
+    flow: server.flow,
+    fingerprint: server.fingerprint,
+    alpn: server.alpn,
+    publicKey: server.publicKey,
+    shortId: server.shortId,
+    spiderX: server.spiderX,
+    serviceName: server.serviceName,
+    authority: server.authority.toLowerCase(),
+    allowInsecure: server.allowInsecure,
+  );
 }

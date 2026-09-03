@@ -127,7 +127,7 @@ class SettingsScreen extends StatelessWidget {
               leading: Icon(Icons.info_outline_rounded),
               title: Text('MobileTinaVPN for Windows'),
               subtitle: Text(
-                'نسخه 0.3.0 • نسخهٔ پرتابل ویندوز\n'
+                'نسخه 0.4.0 • نسخهٔ پرتابل ویندوز\n'
                 'داده‌ها به‌صورت پرتابل در پوشهٔ portable-data نگهداری می‌شوند.',
               ),
             ),
@@ -138,20 +138,6 @@ class SettingsScreen extends StatelessWidget {
               subtitle: const Text('شبکه‌های اجتماعی و آدرس فروشگاه‌ها'),
               trailing: const Icon(Icons.chevron_left_rounded),
               onTap: onOpenAbout,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _Section(
-          title: 'حذف اطلاعات',
-          children: <Widget>[
-            ListTile(
-              textColor: Theme.of(context).colorScheme.error,
-              iconColor: Theme.of(context).colorScheme.error,
-              leading: const Icon(Icons.delete_forever_outlined),
-              title: const Text('حذف فیلترشکن'),
-              subtitle: const Text('تمام اشتراک‌ها، سرورها و تنظیمات پاک می‌شوند.'),
-              onTap: () => _confirmReset(context),
             ),
           ],
         ),
@@ -170,8 +156,8 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
         title: const Text('پورت‌های محلی'),
-        content: SizedBox(
-          width: 390,
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 390),
           child: Row(
             children: <Widget>[
               Expanded(
@@ -240,9 +226,8 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (BuildContext context) => AlertDialog(
         title: const Text('گزارش برنامه'),
-        content: SizedBox(
-          width: 650,
-          height: 390,
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 650, maxHeight: 390),
           child: SelectionArea(
             child: SingleChildScrollView(
               child: Text(
@@ -270,28 +255,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmReset(BuildContext context) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('حذف فیلترشکن'),
-        content: const Text(
-          'تمام اشتراک‌ها و کانفیگ‌های برنامه پاک شوند؟ این عملیات قابل بازگشت نیست.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('بیخیال'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed ?? false) await controller.reset();
-  }
 }
 
 class _Section extends StatelessWidget {
